@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò chơi OSINT - Nhập Đáp án</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            margin-bottom: 15px;
+            width: calc(100% - 22px); /* Kích thước trừ padding và border */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Đảm bảo padding và border không làm tăng width */
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #message {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .leaderboard-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        .leaderboard-container h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+        .leaderboard-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .leaderboard-list li:last-child {
+            border-bottom: none;
+        }
+        .leaderboard-list li span:first-child {
+            font-weight: bold;
+            color: #555;
+        }
+        .leaderboard-list li span:last-child {
+            color: #777;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nhập đáp án cuối cùng</h1>
+        <input type="text" id="playerNameInput" placeholder="Tên của bạn" maxlength="50">
+        <input type="text" id="answerInput" placeholder="Nhập đáp án của bạn">
+        <button onclick="submitAnswer()">Kiểm tra và Gửi</button>
+        <p id="message"></p>
+    </div>
+
+    <div class="leaderboard-container">
+        <h2>Bảng xếp hạng</h2>
+        <ul id="leaderboardList" class="leaderboard-list">
+            <li>Loading...</li>
+        </ul>
+    </div>
+
+    <script>
+        const answerInput = document.getElementById('answerInput');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const messageDisplay = document.getElementById('message');
+        const leaderboardList = document.getElementById('leaderboardList');
+
+        async function submitAnswer() {
+            const playerName = playerNameInput.value.trim();
+            const userAnswer = answerInput.value.trim();
+
+            if (!playerName) {
+                messageDisplay.textContent = "Vui lòng nhập tên của bạn!";
+                messageDisplay.className = "error";
+                return;
+            }
+            if (!userAnswer) {
+                messageDisplay.textContent = "Vui lòng nhập đáp án!";
+                messageDisplay.className = "error";
+                return;
+            }
+
+            try {
+                const response = await fetch('/submit-answer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: playerName, answer: userAnswer }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    messageDisplay.textContent = data.message;
+                    messageDisplay.className = "success";
+                    answerInput.value = ''; // Xóa đáp án sau khi đúng
+                    playerNameInput.disabled = true; // Không cho đổi tên sau khi hoàn thành
+                    answerInput.disabled = true; // Không cho nhập đáp án nữa
+                    document.querySelector('button').disabled = true; // Vô hiệu hóa nút
+                    fetchLeaderboard(); // Cập nhật bảng xếp hạng
+                } else {
+                    messageDisplay.textContent = data.message;
+                    messageDisplay.className = "error";
+                }
+            } catch (error) {
+                console.error('Lỗi khi gửi đáp án:', error);
+                messageDisplay.textContent = "Đã xảy ra lỗi khi kết nối đến máy chủ. Vui lòng thử lại.";
+                messageDisplay.className = "error";
+            }
+        }
+
+        async function fetchLeaderboard() {
+            try {
+                const response = await fetch('/leaderboard');
+                const players = await response.json();
+
+                leaderboardList.innerHTML = ''; // Xóa danh sách cũ
+
+                if (players.length === 0) {
+                    leaderboardList.innerHTML = '<li>Chưa có ai hoàn thành.</li>';
+                    return;
+                }
+
+                players.forEach((player, index) => {
+                    const listItem = document.createElement('li');
+                    const finishTime = new Date(player.finish_time).toLocaleString('vi-VN'); // Định dạng thời gian
+                    listItem.innerHTML = `
+                        <span>${index + 1}. ${player.name}</span>
+                        <span>${finishTime}</span>
+                    `;
+                    leaderboardList.appendChild(listItem);
+                });
+
+            } catch (error) {
+                console.error('Lỗi khi tải bảng xếp hạng:', error);
+                leaderboardList.innerHTML = '<li>Không thể tải bảng xếp hạng.</li>';
+            }
+        }
+
+        // Tải bảng xếp hạng khi trang được tải
+        document.addEventListener('DOMContentLoaded', fetchLeaderboard);
+    </script>
+</body>
+</html>
