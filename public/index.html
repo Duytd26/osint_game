@@ -111,6 +111,12 @@
     </div>
 
     <script>
+        // ----------------------------------------------------------------------
+        // THAY ĐỔI DÒNG NÀY VỚI ĐỊA CHỈ BACKEND THỰC TẾ CỦA BẠN SAU KHI DEPLOY
+        // Ví dụ: const BACKEND_URL = "https://your-osint-backend.onrender.com";
+        // ----------------------------------------------------------------------
+        const BACKEND_URL = "https://osint-game-backend.onrender.com/"; // Mặc định là localhost cho việc phát triển cục bộ
+
         const answerInput = document.getElementById('answerInput');
         const playerNameInput = document.getElementById('playerNameInput');
         const messageDisplay = document.getElementById('message');
@@ -132,7 +138,8 @@
             }
 
             try {
-                const response = await fetch('/submit-answer', {
+                // Thay đổi URL để sử dụng biến BACKEND_URL
+                const response = await fetch(`${BACKEND_URL}/submit-answer`, { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -163,7 +170,8 @@
 
         async function fetchLeaderboard() {
             try {
-                const response = await fetch('/leaderboard');
+                // Thay đổi URL để sử dụng biến BACKEND_URL
+                const response = await fetch(`${BACKEND_URL}/leaderboard`); 
                 const players = await response.json();
 
                 leaderboardList.innerHTML = ''; // Xóa danh sách cũ
