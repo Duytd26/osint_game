@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò chơi OSINT - Admin Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="password"] {
+            padding: 10px;
+            margin-bottom: 15px;
+            width: calc(100% - 22px);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-right: 10px;
+        }
+        button.red {
+            background-color: #dc3545;
+        }
+        button.red:hover {
+            background-color: #c82333;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #message {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .leaderboard-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            margin-top: 20px;
+        }
+        .leaderboard-container h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+        .leaderboard-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .leaderboard-list li:last-child {
+            border-bottom: none;
+        }
+        .leaderboard-list li span:first-child {
+            font-weight: bold;
+            color: #555;
+        }
+        .leaderboard-list li span:last-child {
+            color: #777;
+            font-size: 0.9em;
+        }
+        #adminPanel {
+            display: none; /* Ban đầu ẩn đi */
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="loginForm">
+        <h1>Admin Login</h1>
+        <input type="text" id="usernameInput" placeholder="Tên đăng nhập">
+        <input type="password" id="passwordInput" placeholder="Mật khẩu">
+        <button onclick="login()">Đăng nhập</button>
+        <p id="loginMessage"></p>
+    </div>
+
+    <div class="leaderboard-container" id="adminPanel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>Bảng xếp hạng</h2>
+            <button onclick="fetchLeaderboard()">Refresh</button>
+            <button class="red" onclick="resetLeaderboard()">Reset Bảng</button>
+            <button onclick="logout()">Đăng xuất</button>
+        </div>
+        <ul id="leaderboardList" class="leaderboard-list">
+            <li>Vui lòng đăng nhập...</li>
+        </ul>
+        <p id="adminMessage"></p>
+    </div>
+
+    <script>
+        const BACKEND_URL = "http://localhost:3000"; // THAY ĐỔI KHI TRIỂN KHAI
+
+        const loginForm = document.getElementById('loginForm');
+        const adminPanel = document.getElementById('adminPanel');
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginMessage = document.getElementById('loginMessage');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const adminMessage = document.getElementById('adminMessage');
+
+        // Hàm kiểm tra trạng thái đăng nhập khi tải trang
+        async function checkLoginStatus() {
+            try {
+                // Thử gọi API bảng xếp hạng. Nếu không được phép (401), chuyển về trang login
+                const response = await fetch(`${BACKEND_URL}/leaderboard`);
+                if (response.ok) { // Nếu HTTP status là 200-299
+                    loginForm.style.display = 'none';
+                    adminPanel.style.display = 'block';
+                    fetchLeaderboard(); // Tải bảng xếp hạng nếu đã đăng nhập
+                } else if (response.status === 401) {
+                    loginForm.style.display = 'block';
+                    adminPanel.style.display = 'none';
+                } else {
+                    console.error('Lỗi khi kiểm tra trạng thái đăng nhập:', response.status);
+                    loginForm.style.display = 'block'; // Fallback về login
+                    adminPanel.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Lỗi kết nối khi kiểm tra login status:', error);
+                loginForm.style.display = 'block'; // Nếu lỗi kết nối, hiển thị form login
+                adminPanel.style.display = 'none';
+            }
+        }
+
+
+        async function login() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!username || !password) {
+                loginMessage.textContent = "Vui lòng nhập đầy đủ thông tin.";
+                loginMessage.className = "error";
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loginMessage.textContent = data.message;
+                    loginMessage.className = "success";
+                    loginForm.style.display = 'none';
+                    adminPanel.style.display = 'block';
+                    fetchLeaderboard(); // Tải bảng xếp hạng sau khi đăng nhập thành công
+                } else {
+                    loginMessage.textContent = data.message;
+                    loginMessage.className = "error";
+                }
+            } catch (error) {
+                console.error('Lỗi khi đăng nhập:', error);
+                loginMessage.textContent = "Đã xảy ra lỗi khi kết nối đến máy chủ. Vui lòng thử lại.";
+                loginMessage.className = "error";
+            }
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/admin/logout`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message); // Hoặc hiển thị trên loginMessage
+                    loginForm.style.display = 'block';
+                    adminPanel.style.display = 'none';
+                    usernameInput.value = '';
+                    passwordInput.value = '';
+                    loginMessage.textContent = '';
+                } else {
+                    alert('Lỗi khi đăng xuất: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Lỗi khi đăng xuất:', error);
+                alert('Lỗi kết nối khi đăng xuất.');
+            }
+        }
+
+        async function fetchLeaderboard() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/leaderboard`);
+                if (response.status === 401) { // Session hết hạn hoặc chưa đăng nhập
+                    loginForm.style.display = 'block';
+                    adminPanel.style.display = 'none';
+                    loginMessage.textContent = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+                    loginMessage.className = "error";
+                    return;
+                }
+                const players = await response.json();
+
+                leaderboardList.innerHTML = '';
+
+                if (players.length === 0) {
+                    leaderboardList.innerHTML = '<li>Chưa có ai hoàn thành.</li>';
+                    return;
+                }
+
+                players.forEach((player, index) => {
+                    const listItem = document.createElement('li');
+                    const finishTime = new Date(player.finish_time).toLocaleString('vi-VN');
+                    listItem.innerHTML = `
+                        <span>${index + 1}. ${player.name}</span>
+                        <span>${finishTime}</span>
+                    `;
+                    leaderboardList.appendChild(listItem);
+                });
+                adminMessage.textContent = ''; // Xóa thông báo lỗi cũ
+            } catch (error) {
+                console.error('Lỗi khi tải bảng xếp hạng:', error);
+                adminMessage.textContent = 'Không thể tải bảng xếp hạng. Vui lòng thử lại hoặc kiểm tra kết nối.';
+                adminMessage.className = "error";
+            }
+        }
+
+        async function resetLeaderboard() {
+            if (!confirm("Bạn có chắc chắn muốn RESET toàn bộ bảng xếp hạng không? Hành động này không thể hoàn tác!")) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/admin/reset-leaderboard`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+                if (data.success) {
+                    adminMessage.textContent = data.message;
+                    adminMessage.className = "success";
+                    fetchLeaderboard(); // Tải lại bảng xếp hạng sau khi reset
+                } else {
+                    adminMessage.textContent = data.message;
+                    adminMessage.className = "error";
+                }
+            } catch (error) {
+                console.error('Lỗi khi reset bảng xếp hạng:', error);
+                adminMessage.textContent = "Đã xảy ra lỗi khi reset bảng xếp hạng. Vui lòng thử lại.";
+                adminMessage.className = "error";
+            }
+        }
+
+        // Kiểm tra trạng thái đăng nhập khi trang được tải
+        document.addEventListener('DOMContentLoaded', checkLoginStatus);
+    </script>
+</body>
+</html>
