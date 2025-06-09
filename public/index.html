@@ -24,15 +24,15 @@
             text-align: center;
             max-width: 500px;
             width: 90%;
-            margin-bottom: 20px;
+            margin-bottom: 20px; /* Có thể bỏ nếu không có leaderboard container */
         }
         input[type="text"] {
             padding: 10px;
             margin-bottom: 15px;
-            width: calc(100% - 22px); /* Kích thước trừ padding và border */
+            width: calc(100% - 22px);
             border: 1px solid #ccc;
             border-radius: 4px;
-            box-sizing: border-box; /* Đảm bảo padding và border không làm tăng width */
+            box-sizing: border-box;
         }
         button {
             padding: 10px 20px;
@@ -57,41 +57,6 @@
         .error {
             color: red;
         }
-        .leaderboard-container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-            width: 90%;
-        }
-        .leaderboard-container h2 {
-            margin-top: 0;
-            color: #333;
-        }
-        .leaderboard-list {
-            list-style: none;
-            padding: 0;
-            text-align: left;
-        }
-        .leaderboard-list li {
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .leaderboard-list li:last-child {
-            border-bottom: none;
-        }
-        .leaderboard-list li span:first-child {
-            font-weight: bold;
-            color: #555;
-        }
-        .leaderboard-list li span:last-child {
-            color: #777;
-            font-size: 0.9em;
-        }
     </style>
 </head>
 <body>
@@ -103,24 +68,13 @@
         <p id="message"></p>
     </div>
 
-    <div class="leaderboard-container">
-        <h2>Bảng xếp hạng</h2>
-        <ul id="leaderboardList" class="leaderboard-list">
-            <li>Loading...</li>
-        </ul>
-    </div>
-
     <script>
-        // ----------------------------------------------------------------------
-        // THAY ĐỔI DÒNG NÀY VỚI ĐỊA CHỈ BACKEND THỰC TẾ CỦA BẠN SAU KHI DEPLOY
-        // Ví dụ: const BACKEND_URL = "https://your-osint-backend.onrender.com";
-        // ----------------------------------------------------------------------
-        const BACKEND_URL = "https://osint-game-backend.onrender.com"; // Mặc định là localhost cho việc phát triển cục bộ
+        // BACKEND_URL vẫn cần để gửi đáp án
+        const BACKEND_URL = "https://osint-game-backend.onrender.com"; // THAY ĐỔI KHI TRIỂN KHAI
 
         const answerInput = document.getElementById('answerInput');
         const playerNameInput = document.getElementById('playerNameInput');
         const messageDisplay = document.getElementById('message');
-        const leaderboardList = document.getElementById('leaderboardList');
 
         async function submitAnswer() {
             const playerName = playerNameInput.value.trim();
@@ -138,8 +92,7 @@
             }
 
             try {
-                // Thay đổi URL để sử dụng biến BACKEND_URL
-                const response = await fetch(`${BACKEND_URL}/submit-answer`, { 
+                const response = await fetch(`${BACKEND_URL}/submit-answer`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -152,11 +105,11 @@
                 if (data.success) {
                     messageDisplay.textContent = data.message;
                     messageDisplay.className = "success";
-                    answerInput.value = ''; // Xóa đáp án sau khi đúng
-                    playerNameInput.disabled = true; // Không cho đổi tên sau khi hoàn thành
-                    answerInput.disabled = true; // Không cho nhập đáp án nữa
-                    document.querySelector('button').disabled = true; // Vô hiệu hóa nút
-                    fetchLeaderboard(); // Cập nhật bảng xếp hạng
+                    answerInput.value = '';
+                    playerNameInput.disabled = true;
+                    answerInput.disabled = true;
+                    document.querySelector('button').disabled = true;
+                    // Không còn gọi fetchLeaderboard() từ đây nữa
                 } else {
                     messageDisplay.textContent = data.message;
                     messageDisplay.className = "error";
@@ -167,38 +120,6 @@
                 messageDisplay.className = "error";
             }
         }
-
-        async function fetchLeaderboard() {
-            try {
-                // Thay đổi URL để sử dụng biến BACKEND_URL
-                const response = await fetch(`${BACKEND_URL}/leaderboard`); 
-                const players = await response.json();
-
-                leaderboardList.innerHTML = ''; // Xóa danh sách cũ
-
-                if (players.length === 0) {
-                    leaderboardList.innerHTML = '<li>Chưa có ai hoàn thành.</li>';
-                    return;
-                }
-
-                players.forEach((player, index) => {
-                    const listItem = document.createElement('li');
-                    const finishTime = new Date(player.finish_time).toLocaleString('vi-VN'); // Định dạng thời gian
-                    listItem.innerHTML = `
-                        <span>${index + 1}. ${player.name}</span>
-                        <span>${finishTime}</span>
-                    `;
-                    leaderboardList.appendChild(listItem);
-                });
-
-            } catch (error) {
-                console.error('Lỗi khi tải bảng xếp hạng:', error);
-                leaderboardList.innerHTML = '<li>Không thể tải bảng xếp hạng.</li>';
-            }
-        }
-
-        // Tải bảng xếp hạng khi trang được tải
-        document.addEventListener('DOMContentLoaded', fetchLeaderboard);
     </script>
 </body>
 </html>
