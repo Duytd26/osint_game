@@ -66,7 +66,7 @@ app.post('/submit-answer', (req, res) => {
                     return res.status(500).json({ success: false, message: 'Lỗi khi lưu kết quả của bạn.' });
                 }
                 console.log(`Người chơi ${name} đã hoàn thành và được thêm vào DB.`);
-                return res.json({ success: true, message: `Chúc mừng bạn, ${name}, đã hoàn thành trò chơi! Bạn là người đầu tiên!` });
+                return res.json({ success: true, message: `Chúc mừng bạn, ${name}, đã hoàn thành trò chơi!` });
             });
         }
     });
